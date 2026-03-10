@@ -1,4 +1,4 @@
-name: "RDP_Limpo_Fabrica"
+name: "RDP_Fast_Install"
 
 on:
   workflow_dispatch:
@@ -7,46 +7,42 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - name: "Fluxo_01: Preparar Senha"
+      - name: "Fluxo_01: Setup Ultra Rápido"
         shell: powershell
         run: |
-          # Define a senha do administrador padrão (runneradmin)
+          # 1. Inicia o download em segundo plano (Ganho de tempo)
+          $down = Start-Job -ScriptBlock {
+            Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\cloudflared.exe"
+          }
+
+          # 2. Configura senha e RDP enquanto o download acontece
           $p = "${{ secrets.otimizacao2 }}"
           net user runneradmin $p
-          # Garante que ele tenha permissão de acesso, como vem de fábrica
           net localgroup "Remote Desktop Users" runneradmin /add
-
-      - name: "Fluxo_02: Habilitar RDP"
-        shell: powershell
-        run: |
-          # Apenas liga o interruptor do RDP sem mudar nenhuma trava de segurança
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-      - name: "Fluxo_03: Baixar e Rodar Cloudflared"
-        shell: powershell
-        run: |
-          # Download direto oficial
-          Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\cloudflared.exe"
-          # Inicia o túnel gravando o log para você pegar o link
-          Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v_log.txt"
+          # 3. Aguarda o término do download (se ainda não acabou)
+          Wait-Job $down | Receive-Job
 
-      - name: "Fluxo_04: Pegar Link de Acesso"
+      - name: "Fluxo_02: Conexão Instantânea"
         shell: powershell
         run: |
+          # Inicia o túnel imediatamente
+          Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v_log.txt"
+          
+          # Loop de busca otimizado (espera menor entre tentativas)
           $ep = ""
           while (!$ep) {
-            Start-Sleep -Seconds 5
+            Start-Sleep -Seconds 2
             if (Test-Path "v_log.txt") {
               $log = Get-Content "v_log.txt"
               $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
             }
           }
-          # Limpa o link para você copiar no mstsc do PC
           $cleanLink = $ep.Replace("https://", "")
-          Write-Host "----------------------------------------------"
-          Write-Host "COPIE ESTE ENDEREÇO: $cleanLink"
+          Write-Host "`n----------------------------------------------"
+          Write-Host "LINK RDP: $cleanLink"
           Write-Host "USUARIO: runneradmin"
           Write-Host "----------------------------------------------"
-          # Mantém a máquina viva por 6 horas
           Start-Sleep -Seconds 21600
