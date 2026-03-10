@@ -26,8 +26,11 @@ jobs:
       - name: "Fluxo_03"
         shell: powershell
         run: |
+          # Aguarda 5s para o RDP estabilizar antes de abrir o túnel
+          Start-Sleep -Seconds 5
           Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardError "v_log.txt"
-          Start-Sleep -Seconds 10
+          # Aguarda os 16s que você sugeriu para o túnel conectar
+          Start-Sleep -Seconds 16
 
       - name: "Fluxo_04"
         shell: powershell
@@ -38,4 +41,5 @@ jobs:
           Write-Host "LINK RDP: $ep"
           Write-Host "USUARIO: runneradmin"
           Write-Host "----------------------------------------------"
+          # Mantém a máquina viva por 6 horas
           Start-Sleep -Seconds 21600
