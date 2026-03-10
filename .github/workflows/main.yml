@@ -1,4 +1,4 @@
-name: "RDP_Ultra_Turbo_Final"
+name: "RDP_Turbo_Ultra_Performance"
 
 on:
   workflow_dispatch:
@@ -7,44 +7,53 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - name: "Fluxo_01: Preparação Total"
+      - name: "Fluxo_01: Checkout"
         uses: actions/checkout@v4
 
       - name: "Fluxo_02: Execução em Alta Velocidade"
         shell: powershell
         run: |
-          # 1. Inicia download do Cloudflared em background (Turbo)
-          $down = Start-Job -ScriptBlock {
+          # 1. Download do Cloudflared (Modo Binário Rápido via Curl)
+          $jobCF = Start-Job -ScriptBlock {
             curl.exe -L -o "C:\cf.exe" "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
           }
 
-          # 2. Configura a senha e permissões de fábrica
+          # 2. Configura Senha e RDP (NLA Ativo)
           net user runneradmin "${{ secrets.otimizacao2 }}"
           net localgroup "Remote Desktop Users" runneradmin /add
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-          # 3. Executa seu arquivo de otimização .bat (se ele existir no repositório)
+          # 3. Executa Otimização .bat (Update, Impressora, Bluetooth, etc)
           if (Test-Path "Otimizar_2022.bat") {
               Start-Process "cmd.exe" -ArgumentList "/c Otimizar_2022.bat" -Wait
           }
 
-          # 4. Finaliza o download e inicia o túnel instantaneamente
-          Wait-Job $down
+          # 4. Inicia Túnel Cloudflare (Redirecionando log para v.txt)
+          Wait-Job $jobCF
           Start-Process "C:\cf.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v.txt"
           
-          # 5. Captura o link agressiva (checa a cada 1 segundo)
-          $l = ""
-          while (!$l) {
+          # 5. Captura do Link Anti-Trava (Lê mesmo se o arquivo estiver em uso)
+          Write-Host "Aguardando link da Cloudflare..."
+          $cleanLink = ""
+          while (!$cleanLink) {
             if (Test-Path "v.txt") {
-              $l = Select-String -Path "v.txt" -Pattern "https://.*\.trycloudflare\.com" | % { $_.Matches.Value }
+              # Tenta ler o conteúdo ignorando erros de arquivo ocupado
+              $content = Get-Content "v.txt" -ErrorAction SilentlyContinue
+              if ($content) {
+                $linkRaw = $content | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
+                if ($linkRaw) {
+                  $cleanLink = $linkRaw.Replace("https://", "")
+                }
+              }
             }
-            Start-Sleep -Seconds 1
+            if (!$cleanLink) { Start-Sleep -Seconds 3 }
           }
           
-          $clean = $l.Replace("https://", "")
           Write-Host "`n=============================================="
-          Write-Host "CONECTE AGORA: $clean"
+          Write-Host "CONECTE AGORA: $cleanLink"
           Write-Host "USUARIO: runneradmin"
           Write-Host "=============================================="
+          
+          # Mantém a VM viva por 6 horas
           Start-Sleep -Seconds 21600
