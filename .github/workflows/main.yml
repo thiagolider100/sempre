@@ -1,4 +1,4 @@
-name: "Teste_Fabrica_RDP"
+name: "RDP_Limpo_Fabrica"
 
 on:
   workflow_dispatch:
@@ -7,29 +7,31 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - name: "1. Preparar Senha"
+      - name: "Fluxo_01: Preparar Senha"
         shell: powershell
         run: |
+          # Define a senha do administrador padrão (runneradmin)
           $p = "${{ secrets.otimizacao2 }}"
           net user runneradmin $p
-          # Garante que o usuário tenha permissão de acesso remoto
+          # Garante que ele tenha permissão de acesso, como vem de fábrica
           net localgroup "Remote Desktop Users" runneradmin /add
 
-      - name: "2. Habilitar RDP Padrão"
+      - name: "Fluxo_02: Habilitar RDP"
         shell: powershell
         run: |
-          # Ativa o RDP e mantém a NLA de fábrica
+          # Apenas liga o interruptor do RDP sem mudar nenhuma trava de segurança
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-      - name: "3. Instalar e Abrir Túnel"
+      - name: "Fluxo_03: Baixar e Rodar Cloudflared"
         shell: powershell
         run: |
+          # Download direto oficial
           Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\cloudflared.exe"
-          # Inicia o túnel gravando o log para extrair o link
+          # Inicia o túnel gravando o log para você pegar o link
           Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v_log.txt"
 
-      - name: "4. Exibir Link de Acesso"
+      - name: "Fluxo_04: Pegar Link de Acesso"
         shell: powershell
         run: |
           $ep = ""
@@ -40,10 +42,11 @@ jobs:
               $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
             }
           }
+          # Limpa o link para você copiar no mstsc do PC
           $cleanLink = $ep.Replace("https://", "")
           Write-Host "----------------------------------------------"
-          Write-Host "ENDERECO RDP: $cleanLink"
+          Write-Host "COPIE ESTE ENDEREÇO: $cleanLink"
           Write-Host "USUARIO: runneradmin"
           Write-Host "----------------------------------------------"
-          # Mantém rodando por 6 horas
+          # Mantém a máquina viva por 6 horas
           Start-Sleep -Seconds 21600
