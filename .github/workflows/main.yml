@@ -1,4 +1,4 @@
-name: "RDP_Factory_Settings"
+name: "Teste_Fabrica_RDP"
 
 on:
   workflow_dispatch:
@@ -7,43 +7,34 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - name: "Fluxo_01: Checkout"
-        uses: actions/checkout@v4
-
-      - name: "Fluxo_02: Configuração do Usuário e RDP"
+      - name: "1. Preparar Senha"
         shell: powershell
         run: |
-          # 1. Cria o usuário com a senha do seu Secret
           $p = "${{ secrets.otimizacao2 }}"
           net user runneradmin $p
-          
-          # 2. Adiciona o usuário ao grupo de Acesso Remoto (Obrigatório para NLA)
+          # Garante que o usuário tenha permissão de acesso remoto
           net localgroup "Remote Desktop Users" runneradmin /add
-          
-          # 3. Garante que o RDP esteja habilitado (Configuração de fábrica)
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-          
-          # 4. Habilita explicitamente a NLA (Valor 1 = Ativada)
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-          
-          # 5. Abre a porta no Firewall
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-      - name: "Fluxo_03: Iniciar Cloudflare"
+      - name: "2. Habilitar RDP Padrão"
         shell: powershell
         run: |
-          # Baixa o executável
+          # Ativa o RDP e mantém a NLA de fábrica
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: "3. Instalar e Abrir Túnel"
+        shell: powershell
+        run: |
           Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\cloudflared.exe"
-          
-          # Inicia o túnel
+          # Inicia o túnel gravando o log para extrair o link
           Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v_log.txt"
 
-      - name: "Fluxo_04: Link e Instruções"
+      - name: "4. Exibir Link de Acesso"
         shell: powershell
         run: |
           $ep = ""
           while (!$ep) {
-            Start-Sleep -Seconds 3
+            Start-Sleep -Seconds 5
             if (Test-Path "v_log.txt") {
               $log = Get-Content "v_log.txt"
               $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
@@ -51,8 +42,8 @@ jobs:
           }
           $cleanLink = $ep.Replace("https://", "")
           Write-Host "----------------------------------------------"
-          Write-Host "COPIE ESTE ENDEREÇO: $cleanLink"
+          Write-Host "ENDERECO RDP: $cleanLink"
           Write-Host "USUARIO: runneradmin"
-          Write-Host "SENHA: (A que você definiu no Secret)"
           Write-Host "----------------------------------------------"
+          # Mantém rodando por 6 horas
           Start-Sleep -Seconds 21600
