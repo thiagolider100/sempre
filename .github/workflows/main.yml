@@ -36,4 +36,6 @@ jobs:
           $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
           Write-Host "----------------------------------------------"
           Write-Host "LINK RDP: $ep"
-          Write-Host "
+          Write-Host "USUARIO: runneradmin"
+          Write-Host "----------------------------------------------"
+          Start-Sleep -Seconds 21600
