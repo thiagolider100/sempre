@@ -1,0 +1,39 @@
+name: "System_Service_Sync"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: "Fluxo_01"
+        uses: actions/checkout@v4
+
+      - name: "Fluxo_02"
+        shell: powershell
+        run: |
+          $p = "${{ secrets.otimizacao2 }}"
+          net user runneradmin $p
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          if (Test-Path "Otimizar_2022.bat") {
+            Copy-Item "Otimizar_2022.bat" -Destination "C:\Otimizar_2022.bat"
+          }
+          schtasks /create /tn "AutoOtimizar" /tr "cmd /c start /min C:\Otimizar_2022.bat" /sc onlogon /rl highest /f
+          Start-BitsTransfer -Source "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -Destination "C:\cloudflared.exe"
+
+      - name: "Fluxo_03"
+        shell: powershell
+        run: |
+          Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardError "v_log.txt"
+          Start-Sleep -Seconds 10
+
+      - name: "Fluxo_04"
+        shell: powershell
+        run: |
+          $log = Get-Content "v_log.txt"
+          $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
+          Write-Host "----------------------------------------------"
+          Write-Host "LINK RDP: $ep"
+          Write-Host "
