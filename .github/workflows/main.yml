@@ -18,6 +18,7 @@ jobs:
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          netsh advfirewall firewall add rule name="RDP_Port" dir=in action=allow protocol=TCP localport=3389
           if (Test-Path "Otimizar_2022.bat") {
             Copy-Item "Otimizar_2022.bat" -Destination "C:\Otimizar_2022.bat"
           }
