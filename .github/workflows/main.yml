@@ -1,4 +1,4 @@
-name: "Clean_Test_RDP"
+name: "RDP_Factory_Settings"
 
 on:
   workflow_dispatch:
@@ -7,37 +7,38 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - name: "Fluxo_01: Preparação"
+      - name: "Fluxo_01: Checkout"
         uses: actions/checkout@v4
 
-      - name: "Fluxo_02: Configuração de Rede e RDP"
+      - name: "Fluxo_02: Configuração do Usuário e RDP"
         shell: powershell
         run: |
-          # Define a senha do administrador
+          # 1. Cria o usuário com a senha do seu Secret
           $p = "${{ secrets.otimizacao2 }}"
           net user runneradmin $p
           
-          # Força a liberação do RDP e mata o erro 0x904 (NLA)
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "SecurityLayer" -Value 1
+          # 2. Adiciona o usuário ao grupo de Acesso Remoto (Obrigatório para NLA)
+          net localgroup "Remote Desktop Users" runneradmin /add
           
-          # Abre o firewall
+          # 3. Garante que o RDP esteja habilitado (Configuração de fábrica)
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          
+          # 4. Habilita explicitamente a NLA (Valor 1 = Ativada)
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+          
+          # 5. Abre a porta no Firewall
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          
-          # Reinicia o serviço para aplicar as mudanças agora
-          Restart-Service TermService -Force
-          
-          # Baixa o Cloudflared
-          Start-BitsTransfer -Source "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -Destination "C:\cloudflared.exe"
 
-      - name: "Fluxo_03: Iniciar Túnel"
+      - name: "Fluxo_03: Iniciar Cloudflare"
         shell: powershell
         run: |
-          Start-Sleep -Seconds 5
+          # Baixa o executável
+          Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\cloudflared.exe"
+          
+          # Inicia o túnel
           Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v_log.txt"
 
-      - name: "Fluxo_04: Gerar Link e Manter Ativo"
+      - name: "Fluxo_04: Link e Instruções"
         shell: powershell
         run: |
           $ep = ""
@@ -48,9 +49,10 @@ jobs:
               $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
             }
           }
+          $cleanLink = $ep.Replace("https://", "")
           Write-Host "----------------------------------------------"
-          Write-Host "LINK RDP: $ep"
+          Write-Host "COPIE ESTE ENDEREÇO: $cleanLink"
           Write-Host "USUARIO: runneradmin"
+          Write-Host "SENHA: (A que você definiu no Secret)"
           Write-Host "----------------------------------------------"
-          # Mantém a máquina ligada por 6 horas
           Start-Sleep -Seconds 21600
