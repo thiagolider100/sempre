@@ -1,4 +1,4 @@
-name: "RDP_Fast_Install"
+name: "RDP_Ultra_Turbo_Final"
 
 on:
   workflow_dispatch:
@@ -7,42 +7,44 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - name: "Fluxo_01: Setup Ultra Rápido"
+      - name: "Fluxo_01: Preparação Total"
+        uses: actions/checkout@v4
+
+      - name: "Fluxo_02: Execução em Alta Velocidade"
         shell: powershell
         run: |
-          # 1. Inicia o download em segundo plano (Ganho de tempo)
+          # 1. Inicia download do Cloudflared em background (Turbo)
           $down = Start-Job -ScriptBlock {
-            Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\cloudflared.exe"
+            curl.exe -L -o "C:\cf.exe" "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
           }
 
-          # 2. Configura senha e RDP enquanto o download acontece
-          $p = "${{ secrets.otimizacao2 }}"
-          net user runneradmin $p
+          # 2. Configura a senha e permissões de fábrica
+          net user runneradmin "${{ secrets.otimizacao2 }}"
           net localgroup "Remote Desktop Users" runneradmin /add
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-          # 3. Aguarda o término do download (se ainda não acabou)
-          Wait-Job $down | Receive-Job
-
-      - name: "Fluxo_02: Conexão Instantânea"
-        shell: powershell
-        run: |
-          # Inicia o túnel imediatamente
-          Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v_log.txt"
-          
-          # Loop de busca otimizado (espera menor entre tentativas)
-          $ep = ""
-          while (!$ep) {
-            Start-Sleep -Seconds 2
-            if (Test-Path "v_log.txt") {
-              $log = Get-Content "v_log.txt"
-              $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
-            }
+          # 3. Executa seu arquivo de otimização .bat (se ele existir no repositório)
+          if (Test-Path "Otimizar_2022.bat") {
+              Start-Process "cmd.exe" -ArgumentList "/c Otimizar_2022.bat" -Wait
           }
-          $cleanLink = $ep.Replace("https://", "")
-          Write-Host "`n----------------------------------------------"
-          Write-Host "LINK RDP: $cleanLink"
+
+          # 4. Finaliza o download e inicia o túnel instantaneamente
+          Wait-Job $down
+          Start-Process "C:\cf.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v.txt"
+          
+          # 5. Captura o link agressiva (checa a cada 1 segundo)
+          $l = ""
+          while (!$l) {
+            if (Test-Path "v.txt") {
+              $l = Select-String -Path "v.txt" -Pattern "https://.*\.trycloudflare\.com" | % { $_.Matches.Value }
+            }
+            Start-Sleep -Seconds 1
+          }
+          
+          $clean = $l.Replace("https://", "")
+          Write-Host "`n=============================================="
+          Write-Host "CONECTE AGORA: $clean"
           Write-Host "USUARIO: runneradmin"
-          Write-Host "----------------------------------------------"
+          Write-Host "=============================================="
           Start-Sleep -Seconds 21600
