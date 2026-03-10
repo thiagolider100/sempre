@@ -15,21 +15,17 @@ jobs:
         run: |
           $p = "${{ secrets.otimizacao2 }}"
           net user runneradmin $p
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          netsh advfirewall firewall add rule name="RDP_Port" dir=in action=allow protocol=TCP localport=3389
           if (Test-Path "Otimizar_2022.bat") {
             Copy-Item "Otimizar_2022.bat" -Destination "C:\Otimizar_2022.bat"
           }
-          schtasks /create /tn "AutoOtimizar" /tr "cmd /c start /min C:\Otimizar_2022.bat" /sc onlogon /rl highest /f
+          Start-Process "cmd.exe" -ArgumentList "/c C:\Otimizar_2022.bat" -Wait
           Start-BitsTransfer -Source "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -Destination "C:\cloudflared.exe"
 
       - name: "Fluxo_03"
         shell: powershell
         run: |
           Start-Sleep -Seconds 5
-          Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardError "v_log.txt"
+          Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v_log.txt"
           Start-Sleep -Seconds 16
 
       - name: "Fluxo_04"
