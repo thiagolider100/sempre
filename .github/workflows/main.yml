@@ -26,13 +26,16 @@ jobs:
         run: |
           Start-Sleep -Seconds 5
           Start-Process -FilePath "C:\cloudflared.exe" -ArgumentList "tunnel --url rdp://127.0.0.1:3389" -RedirectStandardError "v_log.txt"
-          Start-Sleep -Seconds 16
 
       - name: "Fluxo_04"
         shell: powershell
         run: |
-          $log = Get-Content "v_log.txt"
-          $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
+          $ep = ""
+          while (!$ep) {
+            Start-Sleep -Seconds 2
+            $log = Get-Content "v_log.txt" -ErrorAction SilentlyContinue
+            $ep = $log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
+          }
           Write-Host "----------------------------------------------"
           Write-Host "LINK RDP: $ep"
           Write-Host "USUARIO: runneradmin"
