@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Portal Empresarial</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; text-align: center; padding: 50px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: inline-block; }
+        h1 { color: #0056b3; }
+        .btn-update { padding: 10px 20px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1 id="nomeEmpresa">Carregando...</h1>
+        <p id="missaoEmpresa"></p>
+        <button class="btn-update" onclick="carregarDados()">Atualizar via Java</button>
+    </div>
+
+    <script>
+        function carregarDados() {
+            // Aqui o HTML se comunica com o Java (Backend)
+            fetch('http://localhost:8080/api/dados')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('nomeEmpresa').innerText = data.nome;
+                    document.getElementById('missaoEmpresa').innerText = data.missao;
+                })
+                .catch(err => {
+                    console.error("Erro ao conectar com o Java: ", err);
+                    alert("Certifique-se de que o servidor Java está rodando!");
+                });
+        }
+        
+        // Carrega ao abrir a página
+        carregarDados();
+    </script>
+</body>
+</html>
