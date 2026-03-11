@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia de Otimização Linux | Performance Total</title>
+    <style>
+        :root {
+            --primary: #2d3436;
+            --accent: #0984e3;
+            --bg: #f5f6fa;
+            --text: #2d3436;
+            --card-bg: #ffffff;
+            --code-bg: #1e1e1e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Fira Code', monospace, sans-serif; }
+
+        body { background-color: var(--bg); color: var(--text); line-height: 1.6; }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 3rem 1rem;
+            text-align: center;
+            border-bottom: 5px solid var(--accent);
+        }
+
+        .container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+
+        .intro { margin-bottom: 3rem; text-align: center; }
+
+        .grid { display: grid; gap: 20px; }
+
+        .card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--accent);
+        }
+
+        h2 { color: var(--accent); margin-bottom: 1rem; font-size: 1.4rem; }
+
+        code {
+            display: block;
+            background: var(--code-bg);
+            color: #fab1a0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #dfe6e9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        footer { text-align: center; padding: 2rem; color: #636e72; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🐧 Linux Performance Optimization</h1>
+    <p>Guia técnico para extrair o máximo do seu Kernel</p>
+</header>
+
+<div class="container">
+    <section class="intro">
+        <p>A otimização no Linux não é sobre "mágica", mas sobre ajustar o sistema para o seu hardware e carga de trabalho específica.</p>
+    </section>
+
+    <div class="grid">
+        <article class="card">
+            <h2>1. Swappiness (Gerenciamento de RAM)</h2>
+            <p>Define a agressividade com que o sistema move dados da RAM para a SWAP. Para desktops, valores menores são melhores.</p>
+            <span class="tag">Dica: Mude para 10</span>
+            <code>sudo sysctl -w vm.swappiness=10</code>
+        </article>
+
+        <article class="card">
+            <h2>2. Limpeza de Logs do Systemd</h2>
+            <p>O <code>journald</code> pode acumular GBs de logs inúteis com o tempo.</p>
+            <code>sudo journalctl --vacuum-time=7d</code>
+        </article>
+
+        <article class="card">
+            <h2>3. CPU Frequency Governor</h2>
+            <p>Ajuste o perfil de energia do processador para "Performance" ou "Schedutil".</p>
+            <code>echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor</code>
+        </article>
+
+        <article class="card">
+            <h2>4. Otimização de SSD (TRIM)</h2>
+            <p>Garanta que o TRIM esteja ativo para manter a velocidade de escrita do seu SSD.</p>
+            <code>sudo systemctl enable fstrim.timer</code>
+        </article>
+    </div>
+</div>
+
+<footer>
+    <p>Powered by Open Source Community &bull; 2026</p>
+</footer>
+
+</body>
+</html>
